@@ -1,10 +1,18 @@
 from itertools import chain, zip_longest
 
+def is_iterable(o):
+    if isinstance(o, str): return False
+    try:
+        iter(o)
+        return True
+    except TypeError:
+        return False
+
 def public_attrs(o, contains=''):
     contains = contains if isinstance(contains, list) else [contains]
     return [a for a in dir(o) if not a.startswith('_') and any(c in a for c in contains)]
 
-def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'')
+def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'').replace("<class '", '')
 def print_indented_with_type(lv,x,txt): print('\t'*lv, cls_name(x), str(txt))
 
 def simple_describe(x, lv=0,mode='diffusers'):
@@ -59,7 +67,7 @@ def simple_describe(x, lv=0,mode='diffusers'):
                 for m in x.upsamplers: simple_describe(m, lv=lv+1,mode=mode)
         elif cls_name(x)=='Upsample2D': print_indented_with_type(lv, x, (x.conv.in_channels, x.conv.out_channels))
         # -- lists
-        elif cls_name(x)=='ModuleList':
+        elif cls_name(x) in ['ModuleList', 'EmbedSequential', 'list', 'tuple']: # EmbedSequential is a custom class
             print_indented_with_type(lv,x,'')
             for m in x: simple_describe(m, lv=lv+1,mode=mode)
         # -- everything else
