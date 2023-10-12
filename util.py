@@ -1,18 +1,10 @@
-from itertools import chain, zip_longest
-
-def is_iterable(o):
-    if isinstance(o, str): return False
-    try:
-        iter(o)
-        return True
-    except TypeError:
-        return False
+from itertools import chain
 
 def public_attrs(o, contains=''):
     contains = contains if isinstance(contains, list) else [contains]
     return [a for a in dir(o) if not a.startswith('_') and any(c in a for c in contains)]
 
-def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'').replace("<class '", '')
+def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'')
 def print_indented_with_type(lv,x,txt): print('\t'*lv, cls_name(x), str(txt))
 
 def simple_describe(x, lv=0,mode='diffusers'):
@@ -35,8 +27,7 @@ def simple_describe(x, lv=0,mode='diffusers'):
         # -- combined blocks - down
         elif cls_name(x)=='CrossAttnDownBlock2D':
             print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip_longest(x.resnets, x.attentions, fillvalue=None)):
-                if m is not None: simple_describe(m, lv=lv+1,mode=mode)
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
             if hasattr(x,'downsamplers') and x.downsamplers is not None:
                 for m in x.downsamplers: simple_describe(m, lv=lv+1,mode=mode)
         elif cls_name(x)=='DownBlock2D':
@@ -48,16 +39,14 @@ def simple_describe(x, lv=0,mode='diffusers'):
         # -- combined blocks - mid
         elif cls_name(x)=='UNetMidBlock2DCrossAttn':
             print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip_longest(x.resnets, x.attentions, fillvalue=None)):
-                if m is not None: simple_describe(m, lv=lv+1,mode=mode)
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
         elif cls_name(x)=='UNetMidBlock2D':
             print_indented_with_type(lv,x,'')
             for m in x.resnets: simple_describe(m, lv=lv+1,mode=mode)
         # -- combined blocks - up
         elif cls_name(x)=='CrossAttnUpBlock2D':
             print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip_longest(x.resnets, x.attentions, fillvalue=None)):
-                if m is not None: simple_describe(m, lv=lv+1,mode=mode)
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
             if hasattr(x,'upsamplers') and x.upsamplers is not None:
                 for m in x.upsamplers: simple_describe(m, lv=lv+1,mode=mode)
         elif cls_name(x)=='UpBlock2D':
@@ -67,7 +56,7 @@ def simple_describe(x, lv=0,mode='diffusers'):
                 for m in x.upsamplers: simple_describe(m, lv=lv+1,mode=mode)
         elif cls_name(x)=='Upsample2D': print_indented_with_type(lv, x, (x.conv.in_channels, x.conv.out_channels))
         # -- lists
-        elif cls_name(x) in ['ModuleList', 'EmbedSequential', 'list', 'tuple']: # EmbedSequential is a custom class
+        elif cls_name(x) in ['ModuleList','list','tuple','EmbedSequential']: # EmbedSequential is custom class
             print_indented_with_type(lv,x,'')
             for m in x: simple_describe(m, lv=lv+1,mode=mode)
         # -- everything else
@@ -120,3 +109,35 @@ def gether_channel_sizes(m, m_type):
 
 def print_channels(ch_szs):
     for k,v in ch_szs.items(): print(k,v)
+
+
+import re
+def get_state_dict(sdict, contains='', lv=None):
+    if isinstance(sdict, list): sdict = {o:'' for o in sdict} # to make it work for lists
+    if lv is None: keys = [k for k in sdict.keys()]
+    else: keys = {'.'.join(k.split('.')[:lv+1]): '' for k in sdict.keys()}.keys()
+    contains = contains.replace('*', '[^.]*?').replace('.', r'\.') # * matches everything expect . ; . is literal
+    pattern = re.compile(contains)
+    return [k for k in keys if pattern.search(k)]
+
+def print_state_dict(sdict, contains='', lv=None):
+    keys = get_state_dict(sdict, contains,lv)
+    for k in keys: print(k)
+
+from collections import defaultdict
+def to_nested_dict(l):
+    root = {}
+    for o in l:
+        parts = o.split(".")
+        d = root
+        for part in parts:
+            d = d.setdefault(part, {})
+    return root
+
+def pretty_print_dict(d,lv=2,indent=0,depth=1):
+    if depth > lv: return
+    for k,v in d.items():
+        print('  ' * indent + str(k))
+        if isinstance(v, dict): pretty_print_dict(v,lv,indent+4,depth+1)
+            
+def print_as_nested_dict(l,lv=1): pretty_print_dict(to_nested_dict(l),lv=lv)
