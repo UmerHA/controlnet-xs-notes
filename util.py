@@ -134,10 +134,12 @@ def to_nested_dict(l):
             d = d.setdefault(part, {})
     return root
 
-def pretty_print_dict(d,lv=2,indent=0,depth=1):
+def pretty_print_dict(d,lv=2,indent=0,depth=1,print_leaf=False):
     if depth > lv: return
     for k,v in d.items():
         print('  ' * indent + str(k))
-        if isinstance(v, dict): pretty_print_dict(v,lv,indent+4,depth+1)
+        if isinstance(v, dict): pretty_print_dict(v,lv,indent+4,depth+1,print_leaf=print_leaf)
+        else: 
+            if print_leaf: print('  ' * (indent+1) + str(v))
             
-def print_as_nested_dict(l,lv=1): pretty_print_dict(to_nested_dict(l),lv=lv)
+def print_as_nested_dict(l,lv=1,print_leaf=False): pretty_print_dict(to_nested_dict(l),lv=lv,print_leaf=print_leaf)
