@@ -124,22 +124,38 @@ def print_state_dict(sdict, contains='', lv=None):
     keys = get_state_dict(sdict, contains,lv)
     for k in keys: print(k)
 
+def to_shapes(o):
+    if isinstance(o,dict): return {k:to_shapes(v) for k,v in o.items()}
+    elif hasattr(o,'shape'): return list(o.shape) 
+    else: return o
+
+def only_weights(o):
+    if isinstance(o, list): return [k.replace('.weight','') for k in o if not '.bias' in k]
+    elif isinstance(o, dict): return {k.replace('.weight',''):v for k,v in o.items() if not '.bias' in k}
+    else: raise ValueError('Expected list or dict, but got '+str(type(o)))
+
 from collections import defaultdict
-def to_nested_dict(l):
+def to_nested_dict(l, contains=''):
     root = {}
     for o in l:
+        if not contains in o: continue
         parts = o.split(".")
         d = root
-        for part in parts:
-            d = d.setdefault(part, {})
+        for part in parts[:-1]: d = d.setdefault(part, {})
+        if parts:
+            last_part = parts[-1]
+            if isinstance(l, dict): d[last_part] = l[o]
+            else: d[last_part] = {}
     return root
 
 def pretty_print_dict(d,lv=2,indent=0,depth=1,print_leaf=False):
     if depth > lv: return
     for k,v in d.items():
-        print('  ' * indent + str(k))
-        if isinstance(v, dict): pretty_print_dict(v,lv,indent+4,depth+1,print_leaf=print_leaf)
+        if isinstance(v, dict):
+            print('  ' * indent + str(k))
+            pretty_print_dict(v,lv,indent+4,depth+1,print_leaf=print_leaf)
         else: 
-            if print_leaf: print('  ' * (indent+1) + str(v))
+            if print_leaf: print('  ' * indent + str(k) + '\t' + str(v))
+            else: print('  ' * indent + str(k))
             
-def print_as_nested_dict(l,lv=1,print_leaf=False): pretty_print_dict(to_nested_dict(l),lv=lv,print_leaf=print_leaf)
+def print_as_nested_dict(l,contains='',lv=1,print_leaf=False): pretty_print_dict(to_nested_dict(to_shapes(only_weights(l)),contains),lv=lv,print_leaf=print_leaf)
