@@ -107,6 +107,19 @@ def gether_channel_sizes(m, m_type):
         return ch_inout_ctrl
     else: raise ValueError(f'model_type must be `base` or `control`, not `{m_type}`')
 
+def print_detailed_shapes(o,lv=0,name=None):
+    resnet_parts = ["norm1", "conv1", "time_emb_proj", "norm2", "dropout", "conv2", "nonlinearity", "conv_shortcut"]
+    if name is None: name = cls_name(o)
+    match cls_name(o):
+        case 'GroupNorm':            print('\t'*lv,name,o.num_channels,'->',o.num_channels)
+        case 'LoRACompatibleLinear': print('\t'*lv,name,o.in_features, '->',o.out_features)
+        case 'LoRACompatibleConv':   print('\t'*lv,name,o.in_channels, '->',o.out_channels)
+        case 'ResnetBlock2D':
+            print('\t'*lv,'ResnetBlock2D')
+            for p in resnet_parts:
+                if hasattr(o,p): print_detailed_shapes(getattr(o,p),lv+1,name=p)
+        case _: print('\t'*lv,'Ignoring',cls_name(o))
+
 def print_channels(ch_szs):
     for k,v in ch_szs.items(): print(k,v)
 
