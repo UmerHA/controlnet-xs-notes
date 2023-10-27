@@ -1,3 +1,4 @@
+import einops
 from PIL import Image, ImageOps, ImageDraw
 from tqdm.notebook import tqdm
 from functools import partial
@@ -51,3 +52,17 @@ def plot_latents_to_pil_grid(lats, every=5, cols=7, im_size=(300, 300), pbar=Tru
 
     if return_ims: return grid_image, ims
     else: return grid_image
+
+def make_channel_last(im): return einops.rearrange(im, 'c w h-> w h c') if shape(im)[0] in (1,3) else im
+
+def compare_two_images(im1,im2,titles=None,figsize=(10,10)):
+    def shape(o): return o.shape if hasattr(o,'shape') else o.size
+    im1,im2 = make_channel_last(im1),make_channel_last(im2)
+    plt.figure(figsize=figsize)
+    plt.subplot(1, 2, 1)
+    plt.imshow(im1)
+    if titles is not None: plt.title(titles[0])
+    plt.subplot(1, 2, 2)
+    plt.imshow(im2)
+    if titles is not None: plt.title(titles[1])
+    plt.show()
