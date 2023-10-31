@@ -7,6 +7,8 @@ def public_attrs(o, contains=''):
 def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'')
 def print_indented_with_type(lv,x,txt): print('\t'*lv, cls_name(x), str(txt))
 
+def print_shapes(*l): print(', '.join(str(list(t.shape)) for t in l))
+
 def simple_describe(x, lv=0,mode='diffusers'):
     if mode=='cnxs':
         if cls_name(x)=='SpatialTransformer': print_indented_with_type(lv, x, (x.proj_in.in_features, x.proj_out.out_features))

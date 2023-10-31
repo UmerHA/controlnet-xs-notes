@@ -33,12 +33,20 @@ def print_metadata(outp, n=None):
         print(o.i, o.stage, o.msg, o.shape)
         if i+1>=n: return
 
-def have_same_names(i,oc,ol,do_print=True):
+def broadcast(t1,t2):
+    l1,l2 = len(t1.shape),len(t2.shape)
+    if l1<l2:
+        for _ in range(l2-l1): t1 = t1.unsqueeze(-1)
+    else:
+        for _ in range(l1-l2): t2 = t2.unsqueeze(-1)
+    return t1,t2
+
+def have_same_names(oc,ol,do_print=True):
     eq = oc.stage+oc.msg==ol.stage+ol.msg
     if do_print: print('cloud: ', oc.stage,oc.msg,'\nlocal:', ol.stage,ol.msg)
     return eq
 
-def have_same_shapes(i,oc,ol,do_print=True,assert_names_match=True):
+def have_same_shapes(oc,ol,do_print=True,assert_names_match=True):
     if assert_names_match: assert oc.stage+oc.msg==ol.stage+ol.msg
     eq = oc.shape==ol.shape
     if do_print:
@@ -48,7 +56,7 @@ def have_same_shapes(i,oc,ol,do_print=True,assert_names_match=True):
         print()
     return eq
 
-def have_same_values(i,oc,ol,prec=2, do_print=True,assert_names_match=True):
+def have_same_values(oc,ol,prec=2, do_print=True,assert_names_match=True):
     if assert_names_match: assert oc.stage+oc.msg==ol.stage+ol.msg
     eq = (oc.head.round(decimals=prec)==ol.head.round(decimals=prec)).all().item()
     if do_print:
@@ -93,23 +101,24 @@ def divider(l, full=True):
     if full: print('-'*l)
     else: print('- '*(l//2))
 
-def compare_intermediate_results(outp_cloud, outp_local, n=None):
+def compare_intermediate_results(outp_cloud, outp_local, n=None, prec=5, compare_prec=2):
     if n is None: n=max(len(outp_cloud),len(outp_local))
     i,c,l,en,es,ev,d = '-','cloud','local','equal name?','equal shape?','equal values?','mean abs Δ'
-    print(f'{i:<2} | {c:<19} | {l:<19} | {en:<11} | {es:<12} | {ev:<13} | {d:<10}')
-    i,c,l,en,es,ev,d = '','','','','','prec=2',''
-    print(f'{i:<2} | {c:<19} | {l:<19} | {en:<11} | {es:<12} | {ev:^13} | {d:<10}')
-    total_len = 2+3+19+3+19+3+11+3+12+3+13+3+10
+    print(f'{i:<2} | {c:<19} | {l:<19} | {en:<11} | {es:<12} | {ev:<13} | ' + ('{:>'+str(prec+5)+'}').format(d))
+    i,c,l,en,es,ev,d = '','','','','','prec='+str(compare_prec),'prec='+str(prec)
+    print(f'{i:<2} | {c:<19} | {l:<19} | {en:<11} | {es:<12} | {ev:^13} | ' + ('{:>'+str(prec+5)+'}').format(d))
+    total_len = 2+3+19+3+19+3+11+3+12+3+13+3+(prec+5)
     print_line = partial(divider, l=total_len)
     print_thin_line = partial(divider, l=total_len, full=False)
     last_stage = ''
     step_comments_ = step_comments.copy()
     for i in range(n):
         c,l=outp_cloud[i],outp_local[i]
-        eq_name = have_same_names(i,c,l,do_print=False)
-        eq_shape = have_same_shapes(i,c,l,do_print=False)
-        eq_vals = have_same_values(i,c,l,do_print=False,prec=2)
-        mean_difference = (c.t-l.t).abs().mean()
+        eq_name = have_same_names(c,l,do_print=False)
+        eq_shape = have_same_shapes(c,l,do_print=False)
+        eq_vals = have_same_values(c,l,do_print=False,prec=compare_prec)
+        ct,lt = broadcast(c.t,l.t)
+        mae = (ct-lt).abs().mean()
         
         if c.stage!=last_stage:
                 print_line()
@@ -117,7 +126,7 @@ def compare_intermediate_results(outp_cloud, outp_local, n=None):
             
         print(f'{i:<2} | {c.stage:<6} {c.msg:<12} | {l.stage:<6} {l.msg:<12} | ', end='')
         print(fmt_bool(eq_name, '^11')+' | '+fmt_bool(eq_shape, '^12')+' | '+fmt_bool(eq_vals, '^13')+' | ', end='')
-        print(f'{mean_difference:>10.5f}', end='')
+        print(('{:>'+str(prec+5)+'.'+str(prec)+'f}').format(mae), end='')
 
         if i>=5:
             print(f'   {step_comments_.pop(0)}')
