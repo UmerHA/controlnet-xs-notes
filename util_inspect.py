@@ -101,7 +101,7 @@ def divider(l, full=True):
     if full: print('-'*l)
     else: print('- '*(l//2))
 
-def compare_intermediate_results(outp_cloud, outp_local, n=None, prec=5, compare_prec=2):
+def compare_intermediate_results(outp_cloud, outp_local, n=None,n_start=0,prec=5, compare_prec=2):
     if n is None: n=max(len(outp_cloud),len(outp_local))
     i,c,l,en,es,ev,d = '-','cloud','local','equal name?','equal shape?','equal values?','mean abs Δ'
     print(f'{i:<2} | {c:<19} | {l:<19} | {en:<11} | {es:<12} | {ev:<13} | ' + ('{:>'+str(prec+5)+'}').format(d))
@@ -111,8 +111,8 @@ def compare_intermediate_results(outp_cloud, outp_local, n=None, prec=5, compare
     print_line = partial(divider, l=total_len)
     print_thin_line = partial(divider, l=total_len, full=False)
     last_stage = ''
-    step_comments_ = step_comments.copy()
-    for i in range(n):
+    step_comments_ = step_comments[n_start:]
+    for i in range(n_start,n+1):
         c,l=outp_cloud[i],outp_local[i]
         eq_name = have_same_names(c,l,do_print=False)
         eq_shape = have_same_shapes(c,l,do_print=False)
