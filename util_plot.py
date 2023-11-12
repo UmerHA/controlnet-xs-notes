@@ -30,6 +30,8 @@ def plot_latents_to_pil_grid(lats, pipe, every=5, cols=7, im_size=(300, 300), pb
     global real_idx
     
     real_idx = partial(lambda o,every,total: min(total-1,every*o), every=every, total=len(lats))
+
+    if not isinstance(im_size, (list, tuple)): im_size = (im_size, im_size)
     
     titles = [f'Image {i}' for i, _, _ in lats if i % every == 0 or i == len(lats)-1]
     lats = [lat for i, _, lat in lats if i % every == 0 or i == len(lats)-1]
