@@ -4,6 +4,10 @@ def public_attrs(o, contains=''):
     contains = contains if isinstance(contains, list) else [contains]
     return [a for a in dir(o) if not a.startswith('_') and any(c in a for c in contains)]
 
+def listy(o): return isinstance(o, (list, tuple))
+def tuplify(o): return tuple(o) if not listy(o) else o
+def listify(o): return list(o) if not listy(o) else o
+
 def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'')
 def print_indented_with_type(lv,x,txt): print('\t'*lv, cls_name(x), str(txt))
 
