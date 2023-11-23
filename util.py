@@ -1,72 +1,74 @@
 from itertools import chain
+from functools import partial
 
 def public_attrs(o, contains=''):
     contains = contains if isinstance(contains, list) else [contains]
     return [a for a in dir(o) if not a.startswith('_') and any(c in a for c in contains)]
 
-def listy(o): return isinstance(o, (list, tuple))
-def tuplify(o): return tuple(o) if not listy(o) else o
-def listify(o): return list(o) if not listy(o) else o
-
 def cls_name(x): return str(type(x)).split('.')[-1].replace("'>",'')
-def print_indented_with_type(lv,x,txt): print('\t'*lv, cls_name(x), str(txt))
+def cls_name_with_path(x,remove=''): return str(type(x)).split("'")[1].replace(remove,'')
 
-def print_shapes(*l): print(', '.join(str(list(t.shape)) for t in l))
+def print_indented_with_type(lv,x,txt,full_cls_name=False,remove=''):
+    cls_str = cls_name_with_path(x,remove=remove) if full_cls_name else cls_name(x)
+    print('\t'*lv, cls_str, str(txt))
 
-def simple_describe(x, lv=0,mode='diffusers'):
+def simple_describe(x, lv=0,mode='diffusers',full_cls_name=False, remove=''):
+    print_ = partial(print_indented_with_type, full_cls_name=full_cls_name,remove=remove)
+    pass_on_kwargs = dict(mode=mode,full_cls_name=full_cls_name,remove=remove)
+
     if mode=='cnxs':
-        if cls_name(x)=='SpatialTransformer': print_indented_with_type(lv, x, (x.proj_in.in_features, x.proj_out.out_features))
-        elif cls_name(x)=='ResBlock': print_indented_with_type(lv, x, (x.channels, x.out_channels))
-        elif cls_name(x)=='Downsample': print_indented_with_type(lv, x, (x.op.in_channels, x.op.out_channels))
-        elif cls_name(x)=='Upsample': print_indented_with_type(lv, x, (x.channels, x.out_channels))
-        elif cls_name(x)=='Conv2d': print_indented_with_type(lv, x, (x.in_channels, x.out_channels))
+        if cls_name(x)=='SpatialTransformer': print_(lv, x, (x.proj_in.in_features, x.proj_out.out_features))
+        elif cls_name(x)=='ResBlock': print_(lv, x, (x.channels, x.out_channels))
+        elif cls_name(x)=='Downsample': print_(lv, x, (x.op.in_channels, x.op.out_channels))
+        elif cls_name(x)=='Upsample': print_(lv, x, (x.channels, x.out_channels))
+        elif cls_name(x)=='Conv2d': print_(lv, x, (x.in_channels, x.out_channels))
         elif cls_name(x) in ['TimestepEmbedSequential','ModuleList']:
-            print_indented_with_type(lv,x,'')
-            for m in x: simple_describe(m, lv=lv+1,mode=mode)
-        else: print_indented_with_type(lv,x,'')
+            print_(lv,x,'')
+            for m in x: simple_describe(m, lv=lv+1, **pass_on_kwargs)
+        else: print_(lv,x,'')
     
     elif mode=='diffusers':
         # -- basic blocks
-        if cls_name(x)=='Transformer2DModel': print_indented_with_type(lv, x, (x.in_channels, x.out_channels))
-        elif cls_name(x)=='ResnetBlock2D': print_indented_with_type(lv, x, (x.in_channels, x.out_channels))
-        elif cls_name(x)=='Conv2d': print_indented_with_type(lv, x, (x.in_channels, x.out_channels))
+        if cls_name(x)=='Transformer2DModel': print_(lv, x, (x.in_channels, x.out_channels))
+        elif cls_name(x)=='ResnetBlock2D': print_(lv, x, (x.in_channels, x.out_channels))
+        elif cls_name(x)=='Conv2d': print_(lv, x, (x.in_channels, x.out_channels))
         # -- combined blocks - down
         elif cls_name(x)=='CrossAttnDownBlock2D':
-            print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1, **pass_on_kwargs)
             if hasattr(x,'downsamplers') and x.downsamplers is not None:
-                for m in x.downsamplers: simple_describe(m, lv=lv+1,mode=mode)
+                for m in x.downsamplers: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         elif cls_name(x)=='DownBlock2D':
-            print_indented_with_type(lv,x,'')
-            for m in x.resnets: simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in x.resnets: simple_describe(m, lv=lv+1, **pass_on_kwargs)
             if hasattr(x,'downsamplers') and x.downsamplers is not None:
-                for m in x.downsamplers: simple_describe(m, lv=lv+1,mode=mode)
+                for m in x.downsamplers: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         elif cls_name(x)=='Downsample2D': print_indented_with_type(lv, x, (x.conv.in_channels, x.conv.out_channels))
         # -- combined blocks - mid
         elif cls_name(x)=='UNetMidBlock2DCrossAttn':
-            print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1, **pass_on_kwargs)
         elif cls_name(x)=='UNetMidBlock2D':
-            print_indented_with_type(lv,x,'')
-            for m in x.resnets: simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in x.resnets: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         # -- combined blocks - up
         elif cls_name(x)=='CrossAttnUpBlock2D':
-            print_indented_with_type(lv,x,'')
-            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in chain.from_iterable(zip(x.resnets, x.attentions)): simple_describe(m, lv=lv+1, **pass_on_kwargs)
             if hasattr(x,'upsamplers') and x.upsamplers is not None:
-                for m in x.upsamplers: simple_describe(m, lv=lv+1,mode=mode)
+                for m in x.upsamplers: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         elif cls_name(x)=='UpBlock2D':
-            print_indented_with_type(lv,x,'')
-            for m in x.resnets: simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in x.resnets: simple_describe(m, lv=lv+1, **pass_on_kwargs)
             if hasattr(x,'upsamplers') and x.upsamplers is not None:
-                for m in x.upsamplers: simple_describe(m, lv=lv+1,mode=mode)
+                for m in x.upsamplers: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         elif cls_name(x)=='Upsample2D': print_indented_with_type(lv, x, (x.conv.in_channels, x.conv.out_channels))
         # -- lists
         elif cls_name(x) in ['ModuleList','list','tuple','EmbedSequential']: # EmbedSequential is custom class
-            print_indented_with_type(lv,x,'')
-            for m in x: simple_describe(m, lv=lv+1,mode=mode)
+            print_(lv,x,'')
+            for m in x: simple_describe(m, lv=lv+1, **pass_on_kwargs)
         # -- everything else
-        else: print_indented_with_type(lv,x,'')
+        else: print_(lv,x,'')
 
     else: raise NotImplementedError()
 
