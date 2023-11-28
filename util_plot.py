@@ -30,7 +30,7 @@ def plot_latents_to_pil_grid(lats, pipe, every=5, cols=7, im_size=(300, 300), pb
     global real_idx
     
     real_idx = partial(lambda o,every,total: min(total-1,every*o), every=every, total=len(lats))
-
+    
     if not isinstance(im_size, (list, tuple)): im_size = (im_size, im_size)
     
     titles = [f'Image {i}' for i, _, _ in lats if i % every == 0 or i == len(lats)-1]
@@ -57,25 +57,19 @@ def plot_latents_to_pil_grid(lats, pipe, every=5, cols=7, im_size=(300, 300), pb
     if return_ims: return grid_image, ims
     else: return grid_image
 
-def shape(o): return o.shape if hasattr(o,'shape') else o.size
-
 def make_channel_last(im): return einops.rearrange(im, 'c w h-> w h c') if shape(im)[0] in (1,3) else im
 
-def compare_images(images, titles=None, figsize=(2, 2)):
-    n = len(images)
-    if titles is None: titles = [None] * n
-    elif len(titles) != n: raise ValueError("Number of titles must match number of images")
-
-    plt.figure(figsize=(figsize[0] * n, figsize[1]))
-
-    for i, image in enumerate(images):
-        plt.subplot(1, n, i + 1)
-        plt.imshow(make_channel_last(image))
-        if titles[i] is not None: plt.title(titles[i])
-    plt.show()
-    
 def compare_two_images(im1,im2,titles=None,figsize=(10,10)):
-    compare_images(images=[im1,im2], titls=titles,figsize=(figsize[0]//2,figsize1))    
+    def shape(o): return o.shape if hasattr(o,'shape') else o.size
+    im1,im2 = make_channel_last(im1),make_channel_last(im2)
+    plt.figure(figsize=figsize)
+    plt.subplot(1, 2, 1)
+    plt.imshow(im1)
+    if titles is not None: plt.title(titles[0])
+    plt.subplot(1, 2, 2)
+    plt.imshow(im2)
+    if titles is not None: plt.title(titles[1])
+    plt.show()
 
 def visually_compare_1d(tensors, titles=None, joint=True, cmap='coolwarm'):
     tensors = [t.cpu().detach() for t in tensors]
